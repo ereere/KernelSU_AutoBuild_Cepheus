@@ -5,97 +5,32 @@ env:
   KERNEL_SOURCE_BRANCH: '15.0'
   KERNEL_DEFCONFIG: 'cepheus_defconfig'
   KERNEL_NAME: 'crDroid-cepheus'
-
+  
 on:
+#   schedule:
+#     - cron: '0 0 * * 0'
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v3
-
-      - name: Set up build environment
+      - uses: actions/checkout@v3
+      
+      - name: run build script
         run: |
-          # 安装必要的依赖项
-          sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libwxgtk3.0-gtk3-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
-
-      - name: Install Repo tool
+          echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M%S")" >> $GITHUB_ENV
+          bash scripts/Evasi0nKernelBuildProcess.sh ${{env.KERNEL_SOURCE}} ${{env.KERNEL_SOURCE_BRANCH}} ${{env.KERNEL_DEFCONFIG}} ${{env.KERNEL_NAME}} 
+      
+      - name: do build
         run: |
-          # 创建一个目录用于存储 Repo 工具
-          mkdir -p ~/bin
-          # 下载 Repo 工具
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-          # 使 Repo 可执行
-          chmod a+x ~/bin/repo
-
-      - name: Initialize Repo
-        run: |
-          # 将 Repo 添加到 PATH
-          export PATH=~/bin:$PATH
-          # 创建一个目录用于存放源代码
-          mkdir -p crDroid
-          cd crDroid
-          # 初始化 Repo 仓库
-          repo init -u ${{ env.ANDROID_MANIFEST }} -b ${{ env.ANDROID_BRANCH }} --git-lfs
-          # 使用浅克隆以减少磁盘占用
-          repo sync -j$(nproc) --no-clone-bundle --no-tags --prune
-
-      - name: Clean up unnecessary files
-        run: |
-          # 清理不必要的文件以释放磁盘空间
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          sudo apt-get clean
-          sudo swapoff -a
-          sudo rm -f /swapfile
-          sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-          sudo sysctl vm.swappiness=10
-          sudo sysctl vm.vfs_cache_pressure=50
-
-      - name: Prepare build environment
-        run: |
-          # 将 Repo 添加到 PATH
-          export PATH=~/bin:$PATH
-          cd crDroid
-          # 准备环境
-          . build/envsetup.sh
-          # 选择设备
-          lunch crdroid_${{ env.DEVICE_CODENAME }}-userdebug
-
-      - name: Clone kernel source
-        run: |
-          # 将 Repo 添加到 PATH
-          export PATH=~/bin:$PATH
-          cd crDroid
-          git clone --depth=1 --branch=${{ env.KERNEL_SOURCE_BRANCH }} ${{ env.KERNEL_SOURCE }} kernel_source
-
-      - name: Configure and build kernel
-        run: |
-          # 将 Repo 添加到 PATH
-          export PATH=~/bin:$PATH
-          cd crDroid/kernel_source
-          export ARCH=arm64
-          export SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          make ${{ env.KERNEL_DEFCONFIG }}
-          make -j$(nproc) O=out
-
-      - name: Package kernel
-        run: |
-          # 将 Repo 添加到 PATH
-          export PATH=~/bin:$PATH
-          cd crDroid/kernel_source/out
-          zip -r ${{ env.KERNEL_NAME }}.zip ./*
-
-      - name: Release
+          cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
+          sudo bash build.sh   
+          
+      - name: release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          automatic_release_tag: "${{ env.KERNEL_NAME }}-$(date +'%Y%m%d%H%M%S')"
+          automatic_release_tag: "${{env.KERNEL_NAME}}-${{env.BUILD_TIME}}"
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
           files: |
-            crDroid/kernel_source/out/${{ env.KERNEL_NAME }}.zip
+            kernel_workspace/android-kernel/out/*.zip
