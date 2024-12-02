@@ -1,4 +1,4 @@
-name: crDroid_build_kernel-15
+name: crDroid_build_kernel
 
 env:
   KERNEL_SOURCE: 'https://github.com/crdroidandroid/android_kernel_xiaomi_cepheus'
@@ -33,11 +33,11 @@ jobs:
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           # 使 Repo 可执行
           chmod a+x ~/bin/repo
-          # 将 Repo 添加到 PATH
-          echo "export PATH=~/bin:$PATH" >> $GITHUB_ENV
 
       - name: Initialize Repo
         run: |
+          # 将 Repo 添加到 PATH
+          export PATH=~/bin:$PATH
           # 创建一个目录用于存放源代码
           mkdir -p crDroid
           cd crDroid
@@ -48,6 +48,8 @@ jobs:
 
       - name: Prepare build environment
         run: |
+          # 将 Repo 添加到 PATH
+          export PATH=~/bin:$PATH
           cd crDroid
           # 准备环境
           . build/envsetup.sh
@@ -56,28 +58,18 @@ jobs:
 
       - name: Clone kernel source
         run: |
+          # 将 Repo 添加到 PATH
+          export PATH=~/bin:$PATH
           cd crDroid
           git clone --depth=1 --branch=${{ env.KERNEL_SOURCE_BRANCH }} ${{ env.KERNEL_SOURCE }} kernel_source
 
       - name: Configure and build kernel
         run: |
+          # 将 Repo 添加到 PATH
+          export PATH=~/bin:$PATH
           cd crDroid/kernel_source
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           make ${{ env.KERNEL_DEFCONFIG }}
-          make -j$(nproc) O=out
-
-      - name: Package kernel
-        run: |
-          cd crDroid/kernel_source/out
-          zip -r ${{ env.KERNEL_NAME }}.zip ./*
-
-      - name: Release
-        uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          automatic_release_tag: "${{ env.KERNEL_NAME }}-$(date +'%Y%m%d%H%M%S')"
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
-          files: |
-            crDroid/kernel_source/out/${{ env.KERNEL_NAME }}.zip
+          make -j$(nproc 
