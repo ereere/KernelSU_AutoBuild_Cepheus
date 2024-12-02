@@ -15,7 +15,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      
+      # 安装必要的依赖
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison flex libssl-dev make gcc g++ python3 unzip git wget libncurses5-dev libncursesw5-dev zlib1g-dev
+          sudo apt-get install -y llvm clang lld
       - name: run build script
         run: |
           echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M%S")" >> $GITHUB_ENV
