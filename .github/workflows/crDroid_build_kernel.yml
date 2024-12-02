@@ -2,7 +2,7 @@ name: crDroid_build_kernel
 
 env:
   KERNEL_SOURCE: 'https://github.com/crdroidandroid/android_kernel_xiaomi_cepheus'
-  KERNEL_SOURCE_BRANCH: '13.0'
+  KERNEL_SOURCE_BRANCH: '15.0'
   KERNEL_DEFCONFIG: 'cepheus_defconfig'
   KERNEL_NAME: 'crDroid-cepheus'
   
