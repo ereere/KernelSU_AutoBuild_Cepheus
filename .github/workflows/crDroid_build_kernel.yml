@@ -1,13 +1,10 @@
-name: crDroid_build_kernel
+name: crDroid_build_kernel-15
 
 env:
   KERNEL_SOURCE: 'https://github.com/crdroidandroid/android_kernel_xiaomi_cepheus'
   KERNEL_SOURCE_BRANCH: '15.0'
   KERNEL_DEFCONFIG: 'cepheus_defconfig'
   KERNEL_NAME: 'crDroid-cepheus'
-  ANDROID_MANIFEST: 'https://github.com/crdroidandroid/android.git'
-  ANDROID_BRANCH: '15.0'
-  DEVICE_CODENAME: 'cepheus'  # 替换为你的设备代号
 
 on:
   workflow_dispatch:
