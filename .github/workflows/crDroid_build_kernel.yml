@@ -1,37 +1,50 @@
-name: crDroid_build_kernel
+name: crDroid_build_kernel_15
 
 env:
   KERNEL_SOURCE: 'https://github.com/crdroidandroid/android_kernel_xiaomi_cepheus'
   KERNEL_SOURCE_BRANCH: '15.0'
   KERNEL_DEFCONFIG: 'cepheus_defconfig'
   KERNEL_NAME: 'crDroid-cepheus'
-  
+
 on:
-#   schedule:
-#     - cron: '0 0 * * 0'
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: run build script
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      - name: Set up build environment
         run: |
-          echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M%S")" >> $GITHUB_ENV
-          bash scripts/Evasi0nKernelBuildProcess.sh ${{env.KERNEL_SOURCE}} ${{env.KERNEL_SOURCE_BRANCH}} ${{env.KERNEL_DEFCONFIG}} ${{env.KERNEL_NAME}} 
-      
-      - name: do build
+          # Install necessary dependencies
+          sudo apt-get update
+          sudo apt-get install -y git make gcc-aarch64-linux-gnu bc bison flex libssl-dev ccache
+
+      - name: Clone kernel source
         run: |
-          cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-          sudo bash build.sh   
-          
-      - name: release
+          git clone --depth=1 --branch=${{ env.KERNEL_SOURCE_BRANCH }} ${{ env.KERNEL_SOURCE }} kernel_source
+
+      - name: Configure and build kernel
+        run: |
+          cd kernel_source
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          make ${{ env.KERNEL_DEFCONFIG }}
+          make -j$(nproc) O=out
+
+      - name: Package kernel
+        run: |
+          cd out
+          zip -r ${{ env.KERNEL_NAME }}.zip ./*
+
+      - name: Release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          automatic_release_tag: "${{env.KERNEL_NAME}}-${{env.BUILD_TIME}}"
+          automatic_release_tag: "${{ env.KERNEL_NAME }}-$(date +'%Y%m%d%H%M%S')"
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
           files: |
-            kernel_workspace/android-kernel/out/*.zip
-
+            kernel_source/out/${{ env.KERNEL_NAME }}.zip
