@@ -1,4 +1,4 @@
-name: crDroid_build_kernel
+name: crDroid_build_kernel-15
 
 env:
   KERNEL_SOURCE: 'https://github.com/crdroidandroid/android_kernel_xiaomi_cepheus'
@@ -7,7 +7,7 @@ env:
   KERNEL_NAME: 'crDroid-cepheus'
   ANDROID_MANIFEST: 'https://github.com/crdroidandroid/android.git'
   ANDROID_BRANCH: '15.0'
-  DEVICE_CODENAME: 'cepheus'  
+  DEVICE_CODENAME: 'cepheus'  # 替换为你的设备代号
 
 on:
   workflow_dispatch:
@@ -29,11 +29,12 @@ jobs:
         run: |
           # 创建一个目录用于存储 Repo 工具
           mkdir -p ~/bin
-          PATH=~/bin:$PATH
           # 下载 Repo 工具
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           # 使 Repo 可执行
           chmod a+x ~/bin/repo
+          # 将 Repo 添加到 PATH
+          echo "export PATH=~/bin:$PATH" >> $GITHUB_ENV
 
       - name: Initialize Repo
         run: |
