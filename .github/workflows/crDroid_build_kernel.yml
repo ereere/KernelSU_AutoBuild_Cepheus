@@ -43,8 +43,21 @@ jobs:
           cd crDroid
           # 初始化 Repo 仓库
           repo init -u ${{ env.ANDROID_MANIFEST }} -b ${{ env.ANDROID_BRANCH }} --git-lfs
-          # 同步源代码
-          repo sync
+          # 使用浅克隆以减少磁盘占用
+          repo sync -j$(nproc) --no-clone-bundle --no-tags --prune
+
+      - name: Clean up unnecessary files
+        run: |
+          # 清理不必要的文件以释放磁盘空间
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo apt-get clean
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo sysctl vm.swappiness=10
+          sudo sysctl vm.vfs_cache_pressure=50
 
       - name: Prepare build environment
         run: |
@@ -72,4 +85,20 @@ jobs:
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           make ${{ env.KERNEL_DEFCONFIG }}
-          make -j$(nproc 
+          make -j$(nproc) O=out
+
+      - name: Package kernel
+        run: |
+          # 将 Repo 添加到 PATH
+          export PATH=~/bin:$PATH
+          cd crDroid/kernel_source/out
+          zip -r ${{ env.KERNEL_NAME }}.zip ./*
+
+      - name: Release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          automatic_release_tag: "${{ env.KERNEL_NAME }}-$(date +'%Y%m%d%H%M%S')"
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            crDroid/kernel_source/out/${{ env.KERNEL_NAME }}.zip
