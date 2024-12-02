@@ -1,10 +1,13 @@
-name: crDroid_build_kernel_15
+name: crDroid_build_kernel
 
 env:
   KERNEL_SOURCE: 'https://github.com/crdroidandroid/android_kernel_xiaomi_cepheus'
   KERNEL_SOURCE_BRANCH: '15.0'
   KERNEL_DEFCONFIG: 'cepheus_defconfig'
   KERNEL_NAME: 'crDroid-cepheus'
+  ANDROID_MANIFEST: 'https://github.com/crdroidandroid/android.git'
+  ANDROID_BRANCH: '15.0'
+  DEVICE_CODENAME: 'cepheus'  
 
 on:
   workflow_dispatch:
@@ -18,16 +21,46 @@ jobs:
 
       - name: Set up build environment
         run: |
-          # Install necessary dependencies
+          # 安装必要的依赖项
           sudo apt-get update
-          sudo apt install bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libwxgtk3.0-gtk3-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libwxgtk3.0-gtk3-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+
+      - name: Install Repo tool
+        run: |
+          # 创建一个目录用于存储 Repo 工具
+          mkdir -p ~/bin
+          PATH=~/bin:$PATH
+          # 下载 Repo 工具
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          # 使 Repo 可执行
+          chmod a+x ~/bin/repo
+
+      - name: Initialize Repo
+        run: |
+          # 创建一个目录用于存放源代码
+          mkdir -p crDroid
+          cd crDroid
+          # 初始化 Repo 仓库
+          repo init -u ${{ env.ANDROID_MANIFEST }} -b ${{ env.ANDROID_BRANCH }} --git-lfs
+          # 同步源代码
+          repo sync
+
+      - name: Prepare build environment
+        run: |
+          cd crDroid
+          # 准备环境
+          . build/envsetup.sh
+          # 选择设备
+          lunch crdroid_${{ env.DEVICE_CODENAME }}-userdebug
+
       - name: Clone kernel source
         run: |
+          cd crDroid
           git clone --depth=1 --branch=${{ env.KERNEL_SOURCE_BRANCH }} ${{ env.KERNEL_SOURCE }} kernel_source
 
       - name: Configure and build kernel
         run: |
-          cd kernel_source
+          cd crDroid/kernel_source
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
@@ -36,7 +69,7 @@ jobs:
 
       - name: Package kernel
         run: |
-          cd out
+          cd crDroid/kernel_source/out
           zip -r ${{ env.KERNEL_NAME }}.zip ./*
 
       - name: Release
@@ -46,4 +79,4 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
           files: |
-            kernel_source/out/${{ env.KERNEL_NAME }}.zip
+            crDroid/kernel_source/out/${{ env.KERNEL_NAME }}.zip
